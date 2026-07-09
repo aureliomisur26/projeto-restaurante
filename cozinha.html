@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel da Cozinha</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa; color: #333; }
+        h1 { margin-bottom: 20px; font-size: 24px; color: #111; }
+        #lista-pedidos { display: flex; flex-wrap: wrap; gap: 15px; }
+        .pedido-card { background: #fff; border: 1px solid #dee2e6; padding: 20px; border-radius: 8px; width: 320px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between; }
+        .pedido-header { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
+        .pedido-header h3 { font-size: 18px; color: #007bff; }
+        .pedido-header p { font-size: 14px; color: #666; font-weight: bold; margin-top: 2px; }
+        .pedido-corpo { font-size: 15px; margin-bottom: 15px; line-height: 1.4; color: #444; flex-grow: 1; }
+        button { padding: 12px; background-color: #28a745; color: white; border: none; cursor: pointer; border-radius: 5px; font-size: 16px; font-weight: bold; width: 100%; transition: background 0.2s; }
+        button:hover { background-color: #218838; }
+    </style>
+</head>
+<body>
+
+    <h1>Painel da Cozinha</h1>
+    <div id="lista-pedidos">
+        <!-- Os pedidos vão aparecer aqui automaticamente -->
+    </div>
+
+    <script>
+        const URL_BANCO = "https://mosxuzqvsufuevnqowtq.supabase.co";
+        const KEY_BANCO = "sb_publishable_0HZq5N55MCCXliae1VRBNg_y_I_FU2p";
+        
+        const bancoDados = window.supabase.createClient(URL_BANCO, KEY_BANCO);
+
+        async function carregarPedidos() {
+            const { data: pedidos, error } = await bancoDados
+                .from('pedidos')
+                .select('*')
+                .eq('status', 'pendente');
+
+            const container = document.getElementById('lista-pedidos');
+            container.innerHTML = "";
+
+            if (pedidos) {
+                pedidos.forEach(pedido => {
+                    // Separa o texto "Cliente: X | Pedido: Y" para ficar bonito na tela
+                    let infoDetalhada = pedido.cores || "Sem detalhes do pedido";
+                    let partes = infoDetalhada.split(' | ');
+                    let nomeCliente = partes[0] || "Cliente Não Identificado";
+                    let itensPedido = partes[1] || "";
+
+                    container.innerHTML += `
+                        <div class="pedido-card" id="pedido-${pedido.id}">
+                            <div>
+                                <div class="pedido-header">
+                                    <h3>Mesa: ${pedido.mesa}</h3>
+                                    <p>${nomeCliente}</p>
+                                </div>
+                                <div class="pedido-corpo">
+                                    <strong>Itens:</strong><br>
+                                    ${itensPedido.replace('Pedido: ', '') || 'Nenhum item selecionado'}
+                                </div>
+                            </div>
+                            <button onclick="chamarMesa('${pedido.mesa}', ${pedido.id})">Pronto! Chamar Mesa</button>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        async function chamarMesa(numeroMesa, pedidoId) {
+            const { error } = await bancoDados
+                .from('pedidos')
+                .update({ status: 'pronto' })
+                .eq('id', pedidoId);
+
+            if (error) {
+                alert("Erro ao chamar mesa: " + error.message);
+            } else {
+                alert("Mesa chamada!");
+                carregarPedidos();
+            }
+        }
+
+        bancoDados
+            .channel('novos-pedidos')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, payload => {
+                carregarPedidos();
+            })
+            .subscribe();
+
+        carregarPedidos();
+    </script>
+</body>
+</html>

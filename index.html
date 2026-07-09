@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio Digital</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background-color: #f8f9fa; color: #333; padding-bottom: 80px; transition: background-color 0.1s ease; }
+        
+        .header { background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .header h1 { font-size: 22px; color: #111; margin-bottom: 5px; }
+        .header p { font-size: 14px; color: #666; }
+
+        .cadastro-cliente { background: #fff; margin: 15px; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .cadastro-cliente label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 5px; color: #444; }
+        .cadastro-cliente input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+
+        .secao-titulo { font-size: 18px; font-weight: bold; margin: 20px 15px 10px 15px; color: #007bff; border-left: 4px solid #007bff; padding-left: 8px; }
+        
+        .card-item { background: #fff; margin: 0 15px 10px 15px; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .item-info h3 { font-size: 16px; color: #222; margin-bottom: 4px; }
+        .item-info p { font-size: 14px; color: #28a745; font-weight: bold; }
+        
+        .contador { display: flex; align-items: center; gap: 15px; }
+        .btn-contador { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #007bff; background: #fff; color: #007bff; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .btn-contador:active { background: #007bff; color: #fff; }
+        .qtd { font-size: 16px; font-weight: bold; min-width: 15px; text-align: center; }
+
+        .footer-carrinho { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 15px; border-top: 1px solid #e0e0e0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .total-info p { font-size: 12px; color: #666; }
+        .total-info h2 { font-size: 20px; color: #111; }
+        .btn-enviar { background: #007bff; color: #fff; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,123,255,0.2); }
+        .btn-enviar:active { background: #0056b3; }
+
+        .sirene-container { text-align: center; color: white; padding: 20px; }
+        .sirene-container h1 { font-size: 32px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="conteudo-pagina">
+        <div class="header">
+            <h1>Mesa <span id="num-mesa">...</span></h1>
+            <p>Selecione seus produtos abaixo</p>
+        </div>
+
+        <div class="cadastro-cliente">
+            <label for="nome-cliente">Seu Nome / Apelido:</label>
+            <input type="text" id="nome-cliente" placeholder="Ex: João Silva">
+        </div>
+
+        <!-- PORÇÕES -->
+        <div class="secao-titulo">Porções</div>
+        <div class="card-item">
+            <div class="item-info">
+                <h3>Porção de Batata-Frita</h3>
+                <p>R$ 25,00</p>
+            </div>
+            <div class="contador">
+                <button class="btn-contador" onclick="alterarQtd('Batata-Frita', -1)">-</button>
+                <span class="qtd" id="qtd-Batata-Frita">0</span>
+                <button class="btn-contador" onclick="alterarQtd('Batata-Frita', 1)">+</button>
+            </div>
+        </div>
+        <div class="card-item">
+            <div class="item-info">
+                <h3>Porção de Polenta</h3>
+                <p>R$ 22,00</p>
+            </div>
+            <div class="contador">
+                <button class="btn-contador" onclick="alterarQtd('Polenta', -1)">-</button>
+                <span class="qtd" id="qtd-Polenta">0</span>
+                <button class="btn-contador" onclick="alterarQtd('Polenta', 1)">+</button>
+            </div>
+        </div>
+        <div class="card-item">
+            <div class="item-info">
+                <h3>Porção de Frango a Passarinho</h3>
+                <p>R$ 35,00</p>
+            </div>
+            <div class="contador">
+                <button class="btn-contador" onclick="alterarQtd('Frango-Passarinho', -1)">-</button>
+                <span class="qtd" id="qtd-Frango-Passarinho">0</span>
+                <button class="btn-contador" onclick="alterarQtd('Frango-Passarinho', 1)">+</button>
+            </div>
+        </div>
+
+        <!-- BEBIDAS -->
+        <div class="secao-titulo">Bebidas</div>
+        <div class="card-item">
+            <div class="item-info">
+                <h3>Refrigerante</h3>
+                <p>R$ 6,00</p>
+            </div>
+            <div class="contador">
+                <button class="btn-contador" onclick="alterarQtd('Refrigerante', -1)">-</button>
+                <span class="qtd" id="qtd-Refrigerante">0</span>
+                <button class="btn-contador" onclick="alterarQtd('Refrigerante', 1)">+</button>
+            </div>
+        </div>
+        <div class="card-item">
+            <div class="item-info">
+                <h3>Cerveja</h3>
+                <p>R$ 8,00</p>
+            </div>
+            <div class="contador">
+                <button class="btn-contador" onclick="alterarQtd('Cerveja', -1)">-</button>
+                <span class="qtd" id="qtd-Cerveja">0</span>
+                <button class="btn-contador" onclick="alterarQtd('Cerveja', 1)">+</button>
+            </div>
+        </div>
+        <div class="card-item">
+            <div class="item-info">
+                <h3>Água</h3>
+                <p>R$ 4,00</p>
+            </div>
+            <div class="contador">
+                <button class="btn-contador" onclick="alterarQtd('Agua', -1)">-</button>
+                <span class="qtd" id="qtd-Agua">0</span>
+                <button class="btn-contador" onclick="alterarQtd('Agua', 1)">+</button>
+            </div>
+        </div>
+
+        <!-- SOBREMESAS -->
+        <div class="secao-titulo">Sobremesas</div>
+        <div class="card-item">
+            <div class="item-info">
+                <h3>Sorvete</h3>
+                <p>R$ 12,00</p>
+            </div>
+            <div class="contador">
+                <button class="btn-contador" onclick="alterarQtd('Sorvete', -1)">-</button>
+                <span class="qtd" id="qtd-Sorvete">0</span>
+                <button class="btn-contador" onclick="alterarQtd('Sorvete', 1)">+</button>
+            </div>
+        </div>
+        <div class="card-item">
+            <div class="item-info">
+                <h3>Petit Gateau</h3>
+                <p>R$ 18,00</p>
+            </div>
+            <div class="contador">
+                <button class="btn-contador" onclick="alterarQtd('Petit-Gateau', -1)">-</button>
+                <span class="qtd" id="qtd-Petit-Gateau">0</span>
+                <button class="btn-contador" onclick="alterarQtd('Petit-Gateau', 1)">+</button>
+            </div>
+        </div>
+        <div class="card-item">
+            <div class="item-info">
+                <h3>Sobremesa da Casa</h3>
+                <p>R$ 15,00</p>
+            </div>
+            <div class="contador">
+                <button class="btn-contador" onclick="alterarQtd('Sobremesa-Casa', -1)">-</button>
+                <span class="qtd" id="qtd-Sobremesa-Casa">0</span>
+                <button class="btn-contador" onclick="alterarQtd('Sobremesa-Casa', 1)">+</button>
+            </div>
+        </div>
+
+        <!-- BARRA DO TOTAL -->
+        <div class="footer-carrinho">
+            <div class="total-info">
+                <p>Total do Pedido</p>
+                <h2 id="valor-total">R$ 0,00</h2>
+            </div>
+            <button class="btn-enviar" onclick="enviarPedidoReal()">Enviar Pedido</button>
+        </div>
+    </div>
+
+    <script>
+        const URL_BANCO = "https://mosxuzqvsufuevnqowtq.supabase.co";
+        const KEY_BANCO = "sb_publishable_0HZq5N55MCCXliae1VRBNg_y_I_FU2p";
+        const bancoDados = window.supabase.createClient(URL_BANCO, KEY_BANCO);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const mesaAtual = urlParams.get('mesa') || "0";
+        document.getElementById('num-mesa').innerText = mesaAtual;
+
+        const precos = {
+            'Batata-Frita': 25, 'Polenta': 22, 'Frango-Passarinho': 35,
+            'Refrigerante': 6, 'Cerveja': 8, 'Agua': 4,
+            'Sorvete': 12, 'Petit-Gateau': 18, 'Sobremesa-Casa': 15
+        };
+        const carrinho = {
+            'Batata-Frita': 0, 'Polenta': 0, 'Frango-Passarinho': 0,
+            'Refrigerante': 0, 'Cerveja': 0, 'Agua': 0,
+            'Sorvete': 0, 'Petit-Gateau': 0, 'Sobremesa-Casa': 0
+        };
+
+        let intervaloSirene = null;
+
+        function alterarQtd(item, valor) {
+            let novaQtd = carrinho[item] + valor;
+            if (novaQtd >= 0) {
+                carrinho[item] = novaQtd;
+                document.getElementById(`qtd-${item}`).innerText = novaQtd;
+                calcularTotal();
+            }
+        }
+
+        function calcularTotal() {
+            let total = 0;
+            for (let item in carrinho) {
+                total += carrinho[item] * precos[item];
+            }
+            document.getElementById('valor-total').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        }
+
+        function construirTextoPedido() {
+            let resumo = [];
+            for (let item in carrinho) {
+                if (carrinho[item] > 0) {
+                    resumo.push(`${carrinho[item]}x ${item.replace('-', ' ')}`);
+                }
+            }
+            return resumo.join(', ');
+        }
+
+        async function enviarPedidoReal() {
+            const nomeInput = document.getElementById('nome-cliente').value.trim();
+            if (!nomeInput) {
+                alert("Por favor, digite seu nome antes de enviar!");
+                return;
+            }
+
+            const itensPedido = construirTextoPedido();
+            if (!itensPedido) {
+                alert("Adicione pelo menos um item ao seu carrinho!");
+                return;
+            }
+
+            const identificacaoCompleta = `Cliente: ${nomeInput} | Pedido: ${itensPedido}`;
+
+            const { data, error } = await bancoDados
+                .from('pedidos')
+                .insert([{ mesa: mesaAtual, status: 'pendente', cores: identificacaoCompleta }]);
+            
+            if (error) {
+                alert("Erro ao enviar pedido: " + error.message);
+            } else {
+                alert("Pedido recebido pela cozinha! Aguarde nesta tela.");
+            }
+        }
+
+        bancoDados
+            .channel('mudancas-pedidos')
+            .on('postgres_changes', { event: 'UPDATE', filter: `mesa=eq.${mesaAtual}`, schema: 'public', table: 'pedidos' }, payload => {
+                if (payload.new.status === 'pronto') {
+                    dispararSirene();
+                }
+            })
+            .subscribe();
+
+        function dispararSirene() {
+            if (intervaloSirene) clearInterval(intervaloSirene);
+            let corA = "#FF0000";
+            let corB = "#0000FF";
+            
+            document.getElementById('conteudo-pagina').innerHTML = `
+                <div class="sirene-container">
+                    <h1>MESA ${mesaAtual} PRONTA!</h1>
+                    <p style="font-size: 18px; margin-bottom: 20px;">Mostre esta tela piscando para o garçom retirar seu pedido.</p>
+                    <button onclick="window.location.reload()" style="background-color: #fff; color: #333; border: 2px solid #fff; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer;">Retirei meu Pedido / Voltar</button>
+                </div>
+            `;
+            
+            intervaloSirene = setInterval(() => {
+                document.body.style.backgroundColor = (document.body.style.backgroundColor === 'rgb(255, 0, 0)') ? corB : corA;
+            }, 300);
+        }
+    </script>
+</body>
+</html>
