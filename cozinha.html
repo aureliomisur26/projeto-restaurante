@@ -18,10 +18,13 @@
         .card-pedido { background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 6px solid #832423; display: flex; justify-content: space-between; align-items: center; }
         
         .info-pedido h2 { font-size: 20px; color: #111; margin-bottom: 6px; }
-        .info-pedido .detalhes-cliente { font-size: 15px; color: #666; margin-bottom: 12px; font-weight: 500; }
+        .info-pedido .detalhes-cliente { font-size: 15px; color: #444; margin-bottom: 12px; font-weight: 500; }
         
-        /* Destaca a tag de pagamento */
-        .info-pedido .detalhes-cliente span { color: #467253; font-weight: bold; background: #eef4f0; padding: 2px 8px; border-radius: 4px; border: 1px solid #dce8df; }
+        /* Caixa de destaque para a Forma de Pagamento */
+        .info-pedido .detalhes-cliente .tag-pagamento { color: #fff; font-weight: bold; background: #832423; padding: 3px 10px; border-radius: 4px; font-size: 13px; text-transform: uppercase; }
+        
+        /* Caixa de destaque de segurança para o Valor Total */
+        .info-pedido .detalhes-cliente .tag-total { color: #ffffff; font-weight: bold; background: #28a745; padding: 3px 10px; border-radius: 4px; font-size: 14px; margin-left: 8px; }
 
         .itens-lista { list-style: none; background: #fafafa; padding: 12px; border-radius: 6px; border: 1px solid #eee; }
         .itens-lista li { font-size: 16px; margin-bottom: 6px; font-weight: 600; color: #222; }
@@ -29,9 +32,8 @@
 
         .btn-pronto { background-color: #467253; color: white; border: none; padding: 15px 30px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(70,114,83,0.2); transition: background 0.2s; height: fit-content; }
         .btn-pronto:hover { background-color: #35563e; }
-        .btn-pronto:active { background-color: #28412f; }
 
-        .sem-pedidos { text-align: center; padding: 50px; color: #888; font-size: 18px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .sem-pedidos { text-align: center; padding: 50px; color: #888; font-size: 18px; background: white; border-radius: 8px; }
     </style>
 </head>
 <body>
@@ -50,6 +52,42 @@
         const KEY_BANCO = "sb_publishable_0HZq5N55MCCXliae1VRBNg_y_I_FU2p";
         const bancoDados = window.supabase.createClient(URL_BANCO, KEY_BANCO);
 
+        // Preços idênticos aos do index para recalcular o total com segurança na cozinha
+        const tabelaPrecos = {
+            'massa_rodizio': 98.00, 'massa_lasanha': 48.00, 'massa_nhoque': 44.00, 'massa_talharim': 52.00,
+            'carne_file': 78.00, 'carne_frango': 42.00, 'porcao_polenta': 26.00, 'porcao_batata': 24.00,
+            'porcao_salada': 22.00, 'refri_lata': 6.50, 'suco_natural': 9.00, 'suco_jarra': 28.00,
+            'agua_mineral': 4.50, 'cerveja_long': 9.50, 'vinho_taca': 14.00, 'vinho_garrafa': 65.00,
+            'pudim_leite': 14.00, 'tiramisu': 18.00, 'petit_gateau': 22.00
+        };
+
+        // Função auxiliar para descobrir o ID do item com base no texto enviado pelo cliente
+        function obterIdPorNome(nomeItem) {
+            const itensLista = [
+                { id: 'massa_rodizio', nome: 'Rodízio Tradicional Completo (Por Pessoa)' },
+                { id: 'massa_lasanha', nome: 'Lasanha Quatro Queijos da Casa' },
+                { id: 'massa_nhoque', nome: 'Nhoque ao Molho Bolonhesa' },
+                { id: 'massa_talharim', nome: 'Talharim Alfredo com Frango' },
+                { id: 'carne_file', nome: 'Filé Mignon Grelhado ao Molho Madeira' },
+                { id: 'carne_frango', nome: 'Galeto Primo Canto Tradicional' },
+                { id: 'porcao_polenta', nome: 'Porção de Polenta Frita com Queijo' },
+                { id: 'porcao_batata', nome: 'Porção de Batata Frita Especial' },
+                { id: 'porcao_salada', nome: 'Salada de Radicci com Bacon' },
+                { id: 'refri_lata', nome: 'Refrigerante Lata 350ml' },
+                { id: 'suco_natural', nome: 'Suco Natural de Uva (Taça)' },
+                { id: 'suco_jarra', nome: 'Suco Natural de Uva (Jarra 1L)' },
+                { id: 'agua_mineral', nome: 'Água Mineral 500ml (Com ou Sem Gás)' },
+                { id: 'cerveja_long', nome: 'Cerveja Long Neck Premium' },
+                { id: 'vinho_taca', nome: 'Vinho da Casa (Taça)' },
+                { id: 'vinho_garrafa', nome: 'Vinho Fino da Casa (Garrafa)' },
+                { id: 'pudim_leite', nome: 'Pudim de Leite Condensado' },
+                { id: 'tiramisu', nome: 'Tiramisù Clássico Italiano' },
+                { id: 'petit_gateau', nome: 'Petit Gâteau com Sorvete de Creme' }
+            ];
+            const encontrado = itensLista.find(i => nomeItem.includes(i.nome));
+            return encontrado ? encontrado.id : null;
+        }
+
         async function carregarPedidosCozinha() {
             const { data: pedidos, error } = await bancoDados
                 .from('pedidos')
@@ -57,10 +95,7 @@
                 .eq('status', 'pendente')
                 .order('id', { ascending: true });
 
-            if (error) {
-                console.error("Erro ao buscar pedidos:", error);
-                return;
-            }
+            if (error) return;
 
             const container = document.getElementById('lista-pedidos-container');
             document.getElementById('total-pendentes').innerText = `${pedidos.length} Pedidos Pendentes`;
@@ -74,9 +109,8 @@
             pedidos.forEach(pedido => {
                 let stringDados = pedido.cores || "";
                 let parteCliente = "Cliente não identificado";
-                let parteItens = "Nenhum item listado";
+                let parteItens = "";
 
-                // Divide a string mágica que montamos no index [Cliente: X [Pago via Y] | Pedido: Z]
                 if (stringDados.includes('|')) {
                     let partes = stringDados.split('|');
                     parteCliente = partes[0].trim();
@@ -85,15 +119,29 @@
                     parteCliente = stringDados;
                 }
 
-                // Formata o texto do "Pago via X" para ganhar um destaque bonito
-                parteCliente = parteCliente.replace('[', '<span>').replace(']', '</span>');
+                // Estiliza visualmente o "Pago via X"
+                parteCliente = parteCliente.replace('[', '<span class="tag-pagamento">').replace(']', '</span>');
 
-                // Divide a lista de itens por vírgula para exibir em formato de tópicos (lista)
+                // Divide os itens e calcula o valor total real do pedido de forma automática
                 let itensArray = parteItens.split(',');
                 let itensHTML = "";
+                let valorTotalPedido = 0;
+
                 itensArray.forEach(item => {
-                    if(item.trim()) {
-                        itensHTML += `<li>🟢 ${item.trim()}</li>`;
+                    let textoItem = item.trim();
+                    if(textoItem) {
+                        itensHTML += `<li>🟢 ${textoItem}</li>`;
+                        
+                        // Captura a quantidade (ex: "2x") e o nome do produto para somar o valor correto
+                        let partesQtd = textoItem.split('x ');
+                        if(partesQtd.length > 1) {
+                            let qtd = parseInt(partesQtd[0]) || 1;
+                            let nomePrato = partesQtd[1];
+                            let idPrato = obterIdPorNome(nomePrato);
+                            if(idPrato && tabelaPrecos[idPrato]) {
+                                valorTotalPedido += (tabelaPrecos[idPrato] * qtd);
+                            }
+                        }
                     }
                 });
 
@@ -101,7 +149,10 @@
                     <div class="card-pedido">
                         <div class="info-pedido">
                             <h2>Mesa ${pedido.mesa}</h2>
-                            <div class="detalhes-cliente">${parteCliente}</div>
+                            <div class="detalhes-cliente">
+                                ${parteCliente} 
+                                <span class="tag-total">Total: R$ ${valorTotalPedido.toFixed(2).replace('.', ',')}</span>
+                            </div>
                             <ul class="itens-lista">
                                 ${itensHTML}
                             </ul>
@@ -120,14 +171,9 @@
                 .update({ status: 'pronto' })
                 .eq('id', idPedido);
 
-            if (error) {
-                alert("Erro ao atualizar pedido: " + error.message);
-            } else {
-                carregarPedidosCozinha();
-            }
+            if (!error) carregarPedidosCozinha();
         }
 
-        // Fica escutando a nuvem em tempo real. Entrou pedido novo, ele atualiza a tela
         bancoDados
             .channel('mudancas-cozinha')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => {
@@ -135,7 +181,6 @@
             })
             .subscribe();
 
-        // Faz a primeira carga de pedidos ao abrir a tela
         carregarPedidosCozinha();
     </script>
 </body>
