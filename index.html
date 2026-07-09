@@ -15,7 +15,9 @@
 
         .cadastro-cliente { background: #fff; margin: 15px; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .cadastro-cliente label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 5px; color: #444; }
-        .cadastro-cliente input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        .cadastro-cliente input, .cadastro-cliente select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; background: #fff; }
+        .campo-grupo { margin-bottom: 15px; }
+        .campo-grupo:last-child { margin-bottom: 0; }
 
         .secao-titulo { font-size: 18px; font-weight: bold; margin: 20px 15px 10px 15px; color: #007bff; border-left: 4px solid #007bff; padding-left: 8px; }
         
@@ -47,8 +49,19 @@
         </div>
 
         <div class="cadastro-cliente">
-            <label for="nome-cliente">Seu Nome / Apelido:</label>
-            <input type="text" id="nome-cliente" placeholder="Ex: João Silva">
+            <div class="campo-grupo">
+                <label for="nome-cliente">Seu Nome / Apelido:</label>
+                <input type="text" id="nome-cliente" placeholder="Ex: João Silva">
+            </div>
+            <div class="campo-grupo">
+                <label for="forma-pagamento">Forma de Pagamento:</label>
+                <select id="forma-pagamento">
+                    <option value="">Selecione como vai pagar...</option>
+                    <option value="Pix">Pix</option>
+                    <option value="Crédito">Cartão de Crédito</option>
+                    <option value="Débito">Cartão de Débito</option>
+                </select>
+            </div>
         </div>
 
         <!-- PORÇÕES -->
@@ -165,7 +178,7 @@
                 <p>Total do Pedido</p>
                 <h2 id="valor-total">R$ 0,00</h2>
             </div>
-            <button class="btn-enviar" onclick="enviarPedidoReal()">Enviar Pedido</button>
+            <button class="btn-enviar" onclick="enviarPedidoReal()">Pagar e Enviar</button>
         </div>
     </div>
 
@@ -225,13 +238,20 @@
                 return;
             }
 
+            const formaPgto = document.getElementById('forma-pagamento').value;
+            if (!formaPgto) {
+                alert("Por favor, selecione a forma de pagamento!");
+                return;
+            }
+
             const itensPedido = construirTextoPedido();
             if (!itensPedido) {
                 alert("Adicione pelo menos um item ao seu carrinho!");
                 return;
             }
 
-            const identificacaoCompleta = `Cliente: ${nomeInput} | Pedido: ${itensPedido}`;
+            // Guardamos o Nome, os Itens e a Forma de Pagamento simulada na string
+            const identificacaoCompleta = `Cliente: ${nomeInput} [Pago via ${formaPgto}] | Pedido: ${itensPedido}`;
 
             const { data, error } = await bancoDados
                 .from('pedidos')
@@ -240,7 +260,7 @@
             if (error) {
                 alert("Erro ao enviar pedido: " + error.message);
             } else {
-                alert("Pedido recebido pela cozinha! Aguarde nesta tela.");
+                alert("Simulação de pagamento aprovada! Pedido enviado para a cozinha.");
             }
         }
 
