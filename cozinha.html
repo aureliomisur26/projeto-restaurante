@@ -3,93 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel da Cozinha</title>
+    <title>Painel da Cozinha - Dom Antonio</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
-        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa; color: #333; }
-        h1 { margin-bottom: 20px; font-size: 24px; color: #111; }
-        #lista-pedidos { display: flex; flex-wrap: wrap; gap: 15px; }
-        .pedido-card { background: #fff; border: 1px solid #dee2e6; padding: 20px; border-radius: 8px; width: 320px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between; }
-        .pedido-header { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
-        .pedido-header h3 { font-size: 18px; color: #007bff; }
-        .pedido-header p { font-size: 14px; color: #666; font-weight: bold; margin-top: 2px; }
-        .pedido-corpo { font-size: 15px; margin-bottom: 15px; line-height: 1.4; color: #444; flex-grow: 1; }
-        button { padding: 12px; background-color: #28a745; color: white; border: none; cursor: pointer; border-radius: 5px; font-size: 16px; font-weight: bold; width: 100%; transition: background 0.2s; }
-        button:hover { background-color: #218838; }
+        body { background-color: #f4f5f7; padding: 20px; color: #333; }
+        
+        .topo-painel { background-color: #832423; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #467253; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .topo-painel h1 { font-size: 24px; font-weight: bold; }
+        .contador-pedidos { background: #467253; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; }
+
+        .grid-pedidos { display: block; }
+        
+        .card-pedido { background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 6px solid #832423; display: flex; justify-content: space-between; align-items: center; }
+        
+        .info-pedido h2 { font-size: 20px; color: #111; margin-bottom: 6px; }
+        .info-pedido .detalhes-cliente { font-size: 15px; color: #666; margin-bottom: 12px; font-weight: 500; }
+        
+        /* Destaca a tag de pagamento */
+        .info-pedido .detalhes-cliente span { color: #467253; font-weight: bold; background: #eef4f0; padding: 2px 8px; border-radius: 4px; border: 1px solid #dce8df; }
+
+        .itens-lista { list-style: none; background: #fafafa; padding: 12px; border-radius: 6px; border: 1px solid #eee; }
+        .itens-lista li { font-size: 16px; margin-bottom: 6px; font-weight: 600; color: #222; }
+        .itens-lista li:last-child { margin-bottom: 0; }
+
+        .btn-pronto { background-color: #467253; color: white; border: none; padding: 15px 30px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(70,114,83,0.2); transition: background 0.2s; height: fit-content; }
+        .btn-pronto:hover { background-color: #35563e; }
+        .btn-pronto:active { background-color: #28412f; }
+
+        .sem-pedidos { text-align: center; padding: 50px; color: #888; font-size: 18px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
     </style>
 </head>
 <body>
 
-    <h1>Painel da Cozinha</h1>
-    <div id="lista-pedidos">
-        <!-- Os pedidos vão aparecer aqui automaticamente -->
+    <div class="topo-painel">
+        <h1>Painel de Pedidos - Cozinha</h1>
+        <div class="contador-pedidos" id="total-pendentes">0 Pedidos Pendentes</div>
+    </div>
+
+    <div id="lista-pedidos-container" class="grid-pedidos">
+        <div class="sem-pedidos">Buscando novos pedidos na nuvem...</div>
     </div>
 
     <script>
         const URL_BANCO = "https://mosxuzqvsufuevnqowtq.supabase.co";
         const KEY_BANCO = "sb_publishable_0HZq5N55MCCXliae1VRBNg_y_I_FU2p";
-        
         const bancoDados = window.supabase.createClient(URL_BANCO, KEY_BANCO);
 
-        async function carregarPedidos() {
+        async function carregarPedidosCozinha() {
             const { data: pedidos, error } = await bancoDados
                 .from('pedidos')
                 .select('*')
-                .eq('status', 'pendente');
+                .eq('status', 'pendente')
+                .order('id', { ascending: true });
 
-            const container = document.getElementById('lista-pedidos');
-            container.innerHTML = "";
-
-            if (pedidos) {
-                pedidos.forEach(pedido => {
-                    // Separa o texto "Cliente: X | Pedido: Y" para ficar bonito na tela
-                    let infoDetalhada = pedido.cores || "Sem detalhes do pedido";
-                    let partes = infoDetalhada.split(' | ');
-                    let nomeCliente = partes[0] || "Cliente Não Identificado";
-                    let itensPedido = partes[1] || "";
-
-                    container.innerHTML += `
-                        <div class="pedido-card" id="pedido-${pedido.id}">
-                            <div>
-                                <div class="pedido-header">
-                                    <h3>Mesa: ${pedido.mesa}</h3>
-                                    <p>${nomeCliente}</p>
-                                </div>
-                                <div class="pedido-corpo">
-                                    <strong>Itens:</strong><br>
-                                    ${itensPedido.replace('Pedido: ', '') || 'Nenhum item selecionado'}
-                                </div>
-                            </div>
-                            <button onclick="chamarMesa('${pedido.mesa}', ${pedido.id})">Pronto! Chamar Mesa</button>
-                        </div>
-                    `;
-                });
+            if (error) {
+                console.error("Erro ao buscar pedidos:", error);
+                return;
             }
+
+            const container = document.getElementById('lista-pedidos-container');
+            document.getElementById('total-pendentes').innerText = `${pedidos.length} Pedidos Pendentes`;
+
+            if (pedidos.length === 0) {
+                container.innerHTML = '<div class="sem-pedidos">🎉 Nenhum pedido pendente no momento!</div>';
+                return;
+            }
+
+            let htmlHTML = "";
+            pedidos.forEach(pedido => {
+                let stringDados = pedido.cores || "";
+                let parteCliente = "Cliente não identificado";
+                let parteItens = "Nenhum item listado";
+
+                // Divide a string mágica que montamos no index [Cliente: X [Pago via Y] | Pedido: Z]
+                if (stringDados.includes('|')) {
+                    let partes = stringDados.split('|');
+                    parteCliente = partes[0].trim();
+                    parteItens = partes[1].replace('Pedido:', '').trim();
+                } else {
+                    parteCliente = stringDados;
+                }
+
+                // Formata o texto do "Pago via X" para ganhar um destaque bonito
+                parteCliente = parteCliente.replace('[', '<span>').replace(']', '</span>');
+
+                // Divide a lista de itens por vírgula para exibir em formato de tópicos (lista)
+                let itensArray = parteItens.split(',');
+                let itensHTML = "";
+                itensArray.forEach(item => {
+                    if(item.trim()) {
+                        itensHTML += `<li>🟢 ${item.trim()}</li>`;
+                    }
+                });
+
+                htmlHTML += `
+                    <div class="card-pedido">
+                        <div class="info-pedido">
+                            <h2>Mesa ${pedido.mesa}</h2>
+                            <div class="detalhes-cliente">${parteCliente}</div>
+                            <ul class="itens-lista">
+                                ${itensHTML}
+                            </ul>
+                        </div>
+                        <button class="btn-pronto" onclick="marcarComoPronto('${pedido.id}')">Pedido Pronto ✔</button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = htmlHTML;
         }
 
-        async function chamarMesa(numeroMesa, pedidoId) {
+        async function marcarComoPronto(idPedido) {
             const { error } = await bancoDados
                 .from('pedidos')
                 .update({ status: 'pronto' })
-                .eq('id', pedidoId);
+                .eq('id', idPedido);
 
             if (error) {
-                alert("Erro ao chamar mesa: " + error.message);
+                alert("Erro ao atualizar pedido: " + error.message);
             } else {
-                alert("Mesa chamada!");
-                carregarPedidos();
+                carregarPedidosCozinha();
             }
         }
 
+        // Fica escutando a nuvem em tempo real. Entrou pedido novo, ele atualiza a tela
         bancoDados
-            .channel('novos-pedidos')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, payload => {
-                carregarPedidos();
+            .channel('mudancas-cozinha')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => {
+                carregarPedidosCozinha();
             })
             .subscribe();
 
-        carregarPedidos();
+        // Faz a primeira carga de pedidos ao abrir a tela
+        carregarPedidosCozinha();
     </script>
 </body>
 </html>
