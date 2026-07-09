@@ -227,7 +227,11 @@
             `;
             
             intervaloSirene = setInterval(() => {
-                document.body.style.backgroundColor = (document.body.style.backgroundColor === 'rgb(255, 0, 0)') ? corB : corA;
+                if (document.body.style.backgroundColor === 'rgb(131, 36, 35)') {
+                    document.body.style.backgroundColor = corB;
+                } else {
+                    document.body.style.backgroundColor = corA;
+                }
             }, 300);
         }
 
