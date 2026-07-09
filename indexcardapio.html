@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio Digital - Dom Antonio</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background-color: #f7f9f6; color: #333; padding-bottom: 90px; }
+        
+        /* Cabeçalho no tom Vinho do QR Code */
+        .header { background-color: #832423; padding: 25px 20px; text-align: center; color: #ffffff; border-bottom: 4px solid #467253; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 24px; font-weight: bold; margin-bottom: 5px; letter-spacing: 1px; }
+        .header p { font-size: 14px; color: #f0f0f0; }
+
+        .cadastro-cliente { background: #fff; margin: 15px; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-top: 3px solid #832423; }
+        .cadastro-cliente label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 5px; color: #444; }
+        .cadastro-cliente input, .cadastro-cliente select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; background: #fff; margin-bottom: 12px; }
+        .cadastro-cliente select:last-child { margin-bottom: 0; }
+
+        /* Títulos das seções no tom Verde Musgo do QR Code */
+        .secao-titulo { font-size: 18px; font-weight: bold; margin: 25px 15px 12px 15px; color: #467253; border-left: 5px solid #832423; padding-left: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .card-item { background: #fff; margin: 0 15px 12px 15px; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.04); border-left: 3px solid transparent; transition: border-color 0.2s; }
+        .card-item:active { border-color: #467253; }
+        .item-info { flex-grow: 1; padding-right: 15px; }
+        .item-info h3 { font-size: 16px; color: #222; margin-bottom: 4px; font-weight: 600; }
+        .item-info p { font-size: 14px; color: #28a745; font-weight: bold; }
+        
+        .contador { display: flex; align-items: center; gap: 12px; }
+        /* Bordas e fonte do contador em Verde Musgo */
+        .btn-contador { width: 34px; height: 34px; border-radius: 50%; border: 1px solid #467253; background: #fff; color: #467253; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+        .btn-contador:active { background: #467253; color: #fff; }
+        .qtd { font-size: 16px; font-weight: bold; min-width: 20px; text-align: center; color: #111; }
+
+        .footer-carrinho { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 15px 20px; border-top: 1px solid #e0e0e0; box-shadow: 0 -3px 12 rgba(0,0,0,0.08); display: flex; justify-content: space-between; align-items: center; z-index: 999; }
+        .total-info p { font-size: 12px; color: #666; text-transform: uppercase; font-weight: 600; }
+        .total-info h2 { font-size: 22px; color: #832423; font-weight: bold; }
+        
+        /* Botão de envio em Verde Musgo */
+        .btn-enviar { background: #467253; color: #fff; border: none; padding: 14px 28px; font-size: 16px; font-weight: bold; border-radius: 25px; cursor: pointer; box-shadow: 0 4px 8px rgba(70,114,83,0.25); transition: background 0.2s; }
+        .btn-enviar:active { background: #35563e; }
+
+        .sirene-container { text-align: center; color: white; padding: 40px 20px; }
+        .sirene-container h1 { font-size: 36px; margin-bottom: 15px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        .sirene-container p { font-size: 18px; margin-bottom: 30px; line-height: 1.5; }
+        .sirene-container button { background-color: #fff; color: #333; border: none; padding: 14px 28px; border-radius: 25px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+
+    <div id="conteudo-pagina">
+        <div class="header">
+            <h1>DOM ANTONIO</h1>
+            <p>Mesa <span id="num-mesa">...</span> | Faça seu pedido abaixo</p>
+        </div>
+
+        <div class="cadastro-cliente">
+            <label for="nome-cliente">Nome / Apelido do Cliente:</label>
+            <input type="text" id="nome-cliente" placeholder="Como quer ser chamado?">
+            
+            <label for="forma-pagamento">Forma de Pagamento (Paga no Envio):</label>
+            <select id="forma-pagamento">
+                <option value="">Selecione como deseja pagar...</option>
+                <option value="Pix">Pix</option>
+                <option value="Crédito">Cartão de Crédito</option>
+                <option value="Débito">Cartão de Débito</option>
+            </select>
+        </div>
+
+        <div id="container-cardapio"></div>
+
+        <div class="footer-carrinho">
+            <div class="total-info">
+                <p>Total do Pedido</p>
+                <h2 id="valor-total">R$ 0,00</h2>
+            </div>
+            <button class="btn-enviar" onclick="enviarPedidoReal()">Pagar e Enviar</button>
+        </div>
+    </div>
+
+    <script>
+        const URL_BANCO = "https://mosxuzqvsufuevnqowtq.supabase.co";
+        const KEY_BANCO = "sb_publishable_0HZq5N55MCCXliae1VRBNg_y_I_FU2p";
+        const bancoDados = window.supabase.createClient(URL_BANCO, KEY_BANCO);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const mesaAtual = urlParams.get('mesa') || "0";
+        document.getElementById('num-mesa').innerText = mesaAtual;
+
+        const produtosDomAntonio = [
+            { id: 'massa_rodizio', nome: 'Rodízio Tradicional Completo (Por Pessoa)', preco: 98.00, categoria: 'Rodízio' },
+            { id: 'massa_lasanha', nome: 'Lasanha Quatro Queijos da Casa', preco: 48.00, categoria: 'Massas Individuais' },
+            { id: 'massa_nhoque', nome: 'Nhoque ao Molho Bolonhesa', preco: 44.00, categoria: 'Massas Individuais' },
+            { id: 'massa_talharim', nome: 'Talharim Alfredo com Frango', preco: 52.00, categoria: 'Massas Individuais' },
+            { id: 'carne_file', nome: 'Filé Mignon Grelhado ao Molho Madeira', preco: 78.00, categoria: 'Carnes e Grelhados' },
+            { id: 'carne_frango', nome: 'Galeto Primo Canto Tradicional', preco: 42.00, categoria: 'Carnes e Grelhados' },
+            { id: 'porcao_polenta', nome: 'Porção de Polenta Frita com Queijo', preco: 26.00, categoria: 'Acompanhamentos' },
+            { id: 'porcao_batata', nome: 'Porção de Batata Frita Especial', preco: 24.00, categoria: 'Acompanhamentos' },
+            { id: 'porcao_salada', nome: 'Salada de Radicci com Bacon', preco: 22.00, categoria: 'Acompanhamentos' },
+            { id: 'refri_lata', nome: 'Refrigerante Lata 350ml', preco: 6.50, categoria: 'Bebidas' },
+            { id: 'suco_natural', nome: 'Suco Natural de Uva (Taça)', preco: 9.00, categoria: 'Bebidas' },
+            { id: 'suco_jarra', nome: 'Suco Natural de Uva (Jarra 1L)', preco: 28.00, categoria: 'Bebidas' },
+            { id: 'agua_mineral', nome: 'Água Mineral 500ml (Com ou Sem Gás)', preco: 4.50, categoria: 'Bebidas' },
+            { id: 'cerveja_long', nome: 'Cerveja Long Neck Premium', preco: 9.50, categoria: 'Bebidas' },
+            { id: 'vinho_taca', nome: 'Vinho da Casa (Taça)', preco: 14.00, categoria: 'Bebidas' },
+            { id: 'vinho_garrafa', nome: 'Vinho Fino da Casa (Garrafa)', preco: 65.00, categoria: 'Bebidas' },
+            { id: 'pudim_leite', nome: 'Pudim de Leite Condensado', preco: 14.00, categoria: 'Sobremesas' },
+            { id: 'tiramisu', nome: 'Tiramisù Clássico Italiano', preco: 18.00, categoria: 'Sobremesas' },
+            { id: 'petit_gateau', nome: 'Petit Gâteau com Sorvete de Creme', preco: 22.00, categoria: 'Sobremesas' }
+        ];
+
+        const carrinho = {};
+        const precos = {};
+        produtosDomAntonio.forEach(prod => {
+            carrinho[prod.id] = 0;
+            precos[prod.id] = prod.preco;
+        });
+
+        let intervaloSirene = null;
+
+        function renderizarCardapio() {
+            const container = document.getElementById('container-cardapio');
+            let htmlHTML = "";
+            const categorias = [...new Set(produtosDomAntonio.map(p => p.categoria))];
+            
+            categorias.forEach(cat => {
+                htmlHTML += `<div class="secao-titulo">${cat}</div>`;
+                const produtosDaCategoria = produtosDomAntonio.filter(p => p.categoria === cat);
+                produtosDaCategoria.forEach(p => {
+                    htmlHTML += `
+                        <div class="card-item">
+                            <div class="item-info">
+                                <h3>${p.nome}</h3>
+                                <p>R$ ${p.preco.toFixed(2).replace('.', ',')}</p>
+                            </div>
+                            <div class="contador">
+                                <button class="btn-contador" onclick="alterarQtd('${p.id}', -1)">-</button>
+                                <span class="qtd" id="qtd-${p.id}">0</span>
+                                <button class="btn-contador" onclick="alterarQtd('${p.id}', 1)">+</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+            container.innerHTML = htmlHTML;
+        }
+
+        function alterarQtd(idItem, valor) {
+            let novaQtd = carrinho[idItem] + valor;
+            if (novaQtd >= 0) {
+                carrinho[idItem] = novaQtd;
+                document.getElementById(`qtd-${idItem}`).innerText = novaQtd;
+                calcularTotal();
+            }
+        }
+
+        function calcularTotal() {
+            let total = 0;
+            for (let idItem in carrinho) {
+                total += carrinho[idItem] * precos[idItem];
+            }
+            document.getElementById('valor-total').innerText = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        }
+
+        function construirTextoPedido() {
+            let resumo = [];
+            produtosDomAntonio.forEach(prod => {
+                if (carrinho[prod.id] > 0) {
+                    resumo.push(`${carrinho[prod.id]}x ${prod.nome}`);
+                }
+            });
+            return resumo.join(', ');
+        }
+
+        async function enviarPedidoReal() {
+            const nomeInput = document.getElementById('nome-cliente').value.trim();
+            if (!nomeInput) {
+                alert("Por favor, informe seu nome/apelido antes de continuar!");
+                return;
+            }
+
+            const formaPgto = document.getElementById('forma-pagamento').value;
+            if (!formaPgto) {
+                alert("Por favor, selecione a forma de pagamento de preferência!");
+                return;
+            }
+
+            const itensPedido = construirTextoPedido();
+            if (!itensPedido) {
+                alert("Seu carrinho está vazio! Selecione pelo menos um item.");
+                return;
+            }
+
+            const identificacaoCompleta = `Cliente: ${nomeInput} [Pago via ${formaPgto}] | Pedido: ${itensPedido}`;
+
+            const { data, error } = await bancoDados
+                .from('pedidos')
+                .insert([{ mesa: mesaAtual, status: 'pendente', cores: identificacaoCompleta }]);
+            
+            if (error) {
+                alert("Ocorreu um erro ao processar o envio: " + error.message);
+            } else {
+                alert("Simulação de Pagamento Concluída! Seu pedido foi encaminhado para a cozinha.");
+            }
+        }
+
+        bancoDados
+            .channel('mudancas-pedidos')
+            .on('postgres_changes', { event: 'UPDATE', filter: `mesa=eq.${mesaAtual}`, schema: 'public', table: 'pedidos' }, payload => {
+                if (payload.new.status === 'pronto') {
+                    dispararSirene();
+                }
+            })
+            .subscribe();
+
+        function dispararSirene() {
+            if (intervaloSirene) clearInterval(intervaloSirene);
+            let corA = "#FF0000";
+            let corB = "#0000FF";
+            
+            document.getElementById('conteudo-pagina').innerHTML = `
+                <div class="sirene-container">
+                    <h1>MESA ${mesaAtual} PRONTA!</h1>
+                    <p>Por favor, dirija-se ao balcão de entrega ou mostre esta tela para o garçom para retirar seus itens.</p>
+                    <button onclick="window.location.reload()">Retirei meu Pedido / Voltar ao Menu</button>
+                </div>
+            `;
+            
+            intervaloSirene = setInterval(() => {
+                document.body.style.backgroundColor = (document.body.style.backgroundColor === 'rgb(255, 0, 0)') ? corB : corA;
+            }, 300);
+        }
+
+        renderizarCardapio();
+    </script>
+</body>
+</html>
